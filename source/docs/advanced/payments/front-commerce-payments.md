@@ -25,6 +25,44 @@ Front-Commerce handle payments directly, without the need for a payment integrat
 
 From your eCommerce system's perspective, a payment made with Front-Commerce is integrated in a similar way than checks / wire payments (sometimes named "offline payment"). The difference is that Front-Commerce will update orders statuses upon receiving automatic notifications from the payment service.
 
+## React to Payment Domain Events
+Front-Commerce payments will **emit Domain Events whenever a meaningful event occurs.**
+
+Other modules can use `loaders.Payment.registerExternalEventListener` to listen to these events and trigger side effects.  
+
+It is currently used by platform specific modules (e.g: Magento 1 and Magento 2) to maintain Orders in a correct state upon payment. By relying on these events, you don't have to worry about the payment flow or process used by a specific payment implementation (synchronous validation, asynchronous payment server notifications, authentication…).
+
+Here is how you can register an event listener from your GraphQL module. We recommend to do it in the `contextEnhancer`:
+
+```js
+export default {
+  namespace: "Acme/Order",
+  dependencies: [
+    "Front-Commerce/Payment",
+  ],
+  contextEnhancer: ({ req, loaders }) => {
+   	const paymentEventListener = (domainEvent) => {
+		console.log(
+			`${domainEvent.constructor.name} event received`,
+			domainEvent.getMerchantReadableDescription(),
+			domainEvent.getCustomerReadableDescription()
+		);
+		
+		const { PaymentCaptured } = loaders.Payment.domainEvents;
+		if (domainEvent instanceof PaymentCaptured) {
+			// TODO Do something for these specific events
+		}
+	};
+	
+    loaders.Payment.registerExternalEventListener(
+      paymentEventListener
+    );
+
+    return {};
+  },
+};
+```
+
 ## Implement a new Front-Commerce Payment method
 
 <blockquote class="wip">
